@@ -23,7 +23,8 @@ class ViewController: UIViewController {
         strangeAttractorRenderer = StrangeAttractorRenderer(
             frame: CGRect(x: 0, y: 0, width: side, height: side),
             device: MTLCreateSystemDefaultDevice()!, 
-            width: side)
+            width: side,
+            contentScaleFactor: 2)
         
         view.addSubview(strangeAttractorRenderer)
     }

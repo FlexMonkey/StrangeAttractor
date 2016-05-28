@@ -77,11 +77,11 @@ class StrangeAttractorRenderer: MTKView
         return MTLSize(width: self.pointCount / threadExecutionWidth, height:1, depth:1)
     }()
     
-    required init(frame frameRect: CGRect, device: MTLDevice, width: CGFloat)
+    required init(frame frameRect: CGRect, device: MTLDevice, width: CGFloat, contentScaleFactor: CGFloat)
     {
         self.width = width
  
-        let pixelWidth = width * 2
+        let pixelWidth = width * contentScaleFactor
         
         bytesPerRow = 4 * UInt(pixelWidth)
         region = MTLRegionMake2D(0, 0, Int(pixelWidth), Int(pixelWidth))
@@ -109,6 +109,8 @@ class StrangeAttractorRenderer: MTKView
         super.init(
             frame: frameRect,
             device: device)
+        
+        self.contentScaleFactor = contentScaleFactor
         
         paused = true
         framebufferOnly = false
@@ -193,7 +195,7 @@ class StrangeAttractorRenderer: MTKView
         
         drawable.present()
         
-        angle += 0.01
+        angle += 0.005
         pointIndex += 1
     }
     
