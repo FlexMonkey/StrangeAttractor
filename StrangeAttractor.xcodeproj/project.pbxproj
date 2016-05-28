@@ -14,6 +14,7 @@
 		3EFDBE1D1CF87C65008E6BEA /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3EFDBE1B1CF87C65008E6BEA /* LaunchScreen.storyboard */; };
 		3EFDBE251CF87F2B008E6BEA /* StrangeAttractorRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EFDBE241CF87F2B008E6BEA /* StrangeAttractorRenderer.swift */; };
 		3EFDBE271CF87F5A008E6BEA /* StrangeAttractorShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 3EFDBE261CF87F5A008E6BEA /* StrangeAttractorShader.metal */; };
+		3EFDBE291CF97239008E6BEA /* screenshot.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 3EFDBE281CF97239008E6BEA /* screenshot.jpg */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		3EFDBE1E1CF87C65008E6BEA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3EFDBE241CF87F2B008E6BEA /* StrangeAttractorRenderer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StrangeAttractorRenderer.swift; sourceTree = "<group>"; };
 		3EFDBE261CF87F5A008E6BEA /* StrangeAttractorShader.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = StrangeAttractorShader.metal; sourceTree = "<group>"; };
+		3EFDBE281CF97239008E6BEA /* screenshot.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = screenshot.jpg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +68,7 @@
 				3EFDBE1E1CF87C65008E6BEA /* Info.plist */,
 				3EFDBE241CF87F2B008E6BEA /* StrangeAttractorRenderer.swift */,
 				3EFDBE261CF87F5A008E6BEA /* StrangeAttractorShader.metal */,
+				3EFDBE281CF97239008E6BEA /* screenshot.jpg */,
 			);
 			path = StrangeAttractor;
 			sourceTree = "<group>";
@@ -131,6 +134,7 @@
 				3EFDBE1D1CF87C65008E6BEA /* LaunchScreen.storyboard in Resources */,
 				3EFDBE1A1CF87C65008E6BEA /* Assets.xcassets in Resources */,
 				3EFDBE181CF87C65008E6BEA /* Main.storyboard in Resources */,
+				3EFDBE291CF97239008E6BEA /* screenshot.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
