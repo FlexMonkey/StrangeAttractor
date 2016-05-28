@@ -33,6 +33,11 @@ class StrangeAttractorRenderer: MTKView
     private var width: CGFloat
     let centerBuffer: MTLBuffer
     
+    var scale: Float = 20.0
+    var pinchScale: CGFloat = 0 // scale at pinch begin
+    
+    let segmentedControl = UISegmentedControl(items: ["Lorenz", "Chen Lee", "Halvorsen", "Lü Chen", "Hadley", "Rössler"])
+    
     lazy var commandQueue: MTLCommandQueue =
     {
         return self.device!.newCommandQueue()
@@ -115,19 +120,52 @@ class StrangeAttractorRenderer: MTKView
         paused = true
         framebufferOnly = false
 
-        func rnd() -> Float
-        {
-            return -5 + 10 * (Float(arc4random_uniform(1000)) / 1000)
-        }
-
         pointBufferPtr[pointBufferPtr.startIndex] = float3(rnd(), rnd(), rnd())
         
         frameStartTime = CFAbsoluteTimeGetCurrent()
+        
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinchHandler))
+        addGestureRecognizer(pinch)
+        
+        addSubview(segmentedControl)
+        segmentedControl.addTarget(
+            self,
+            action: #selector(segmentedControlChangeHandler),
+            forControlEvents: .ValueChanged)
+        segmentedControl.selectedSegmentIndex = 0
+    }
+    
+    override func layoutSubviews()
+    {
+        super.layoutSubviews()
+        
+        segmentedControl.frame = CGRect(
+            origin: CGPointZero,
+            size: CGSize(width: frame.width, height: segmentedControl.intrinsicContentSize().height))
     }
     
     required init(coder: NSCoder)
     {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    func segmentedControlChangeHandler()
+    {
+        pointBufferPtr[pointBufferPtr.startIndex] = float3(rnd(), rnd(), rnd())
+        pointIndex = 1
+    }
+    
+    func pinchHandler(recogniser: UIPinchGestureRecognizer)
+    {
+        switch recogniser.state
+        {
+        case .Began:
+            pinchScale = CGFloat(scale)
+        case .Changed:
+            scale = min(max(Float(pinchScale * recogniser.scale), 10.0), 400)
+        default:
+            pinchScale = 0
+        }
     }
     
     override func drawRect(rect: CGRect)
@@ -170,6 +208,19 @@ class StrangeAttractorRenderer: MTKView
         
         commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
         
+        let scaleBuffer = device!.newBufferWithBytes(
+            &scale,
+            length: sizeof(Float),
+            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        commandEncoder.setBuffer(scaleBuffer, offset: 0, atIndex: 5)
+        
+        var attractorTypeIndex = UInt(segmentedControl.selectedSegmentIndex)
+        let attractorTypeIndexBuffer = device!.newBufferWithBytes(
+            &attractorTypeIndex,
+            length: sizeof(UInt),
+            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, atIndex: 6)
+        
         guard let drawable = currentDrawable else
         {
             commandEncoder.endEncoding()
@@ -199,6 +250,9 @@ class StrangeAttractorRenderer: MTKView
         pointIndex += 1
     }
     
-    
+    func rnd() -> Float
+    {
+        return -5 + 10 * (Float(arc4random_uniform(1000)) / 1000)
+    }
     
 }

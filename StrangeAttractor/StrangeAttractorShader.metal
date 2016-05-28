@@ -5,6 +5,7 @@
 //  Created by Simon Gladman on 27/05/2016.
 //  Copyright © 2016 Simon Gladman. All rights reserved.
 //
+//  Thanks to https://www.behance.net/gallery/mathrules-strange-attractors/7618879 
 
 #include <metal_stdlib>
 using namespace metal;
@@ -24,9 +25,12 @@ void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 
     
     int err = (dx > dy ? dx : -dy) / 2;
     
+    int width = int(targetTexture.get_width());
+    int height = int(targetTexture.get_height());
+    
     while (true)
     {
-        if (x > 0 && y > 0)
+        if (x > 0 && y > 0 && x < width && y < height)
         {
             targetTexture.write(float4(color, 1.0), uint2(x, y));
         }
@@ -58,25 +62,88 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
                                    constant float &angle [[ buffer(2) ]],
                                    constant uint &pointIndex [[ buffer(3) ]],
                                    constant uint &center [[ buffer(4) ]],
+                                   constant float &scale [[ buffer(5) ]],
+                                   constant uint &attractorTypeIndex [[ buffer(6) ]],
                                    uint id [[thread_position_in_grid]])
 {
-    float scale = 20.0;
     float3 thisPoint = inPoints[id];
     
     if (id == pointIndex)
     {
-        float3 previousPoint = inPoints[id - 1];
-        
-        float sigma = 10.0;
-        float beta = 8.0 / 3.0;
-        float rho = 28.0;
         float divisor = 300.0;
+        float3 previousPoint = inPoints[id - 1];
+        float3 delta;
+
+        if (attractorTypeIndex == 1)
+        {
+            // Chen Lee
+            delta = {
+                5 * previousPoint.x -  previousPoint.y * previousPoint.z,
+                -10.0 * previousPoint.y + previousPoint.x * previousPoint.z,
+                -0.38 * previousPoint.z + previousPoint.x * (previousPoint.y / 3.0)
+            };
+        }
+        else if (attractorTypeIndex == 2)
+        {
+            // Halvorsen
+            float a = 1.4;
+            delta = {
+                -a * previousPoint.x - 4 * previousPoint.y - 4 * previousPoint.z - previousPoint.y * previousPoint.y,
+                -a * previousPoint.y - 4 * previousPoint.z - 4 * previousPoint.x - previousPoint.z * previousPoint.z,
+                -a * previousPoint.z - 4 * previousPoint.x - 4 * previousPoint.y - previousPoint.x * previousPoint.x
+            };
+        }
+        else if (attractorTypeIndex == 3)
+        {
+            // Lü Chen
+            float alpha = -10.0;
+            float beta = -4.0;
+            float zeta = 18.1;
+            delta = {
+                -((alpha * beta * previousPoint.x) / (alpha + beta)) - previousPoint.y * previousPoint.z + zeta,
+                alpha * previousPoint.y + previousPoint.x * previousPoint.z,
+                beta * previousPoint.z + previousPoint.x * previousPoint.y
+            };
+        }
+        else if (attractorTypeIndex == 4)
+        {
+            // Hadley
+            float alpha = 0.2;
+            float beta = 4.0;
+            float zeta = 8;
+            float d = 1.0;
+            delta = {
+               -previousPoint.y * previousPoint.y - previousPoint.z * previousPoint.z - alpha * previousPoint.x + alpha * zeta,
+                previousPoint.x * previousPoint.y - beta * previousPoint.x * previousPoint.z - previousPoint.y * d,
+                beta * previousPoint.x * previousPoint.y + previousPoint.x * previousPoint.z - previousPoint.z
+            };
+        }
+        else if (attractorTypeIndex == 5)
+        {
+            // Rössler
+            float alpha = 0.2;
+            float beta = 0.2;
+            float sigma = 5.7;
+            delta = {
+                -(previousPoint.y + previousPoint.z),
+                previousPoint.x + alpha * previousPoint.y,
+                beta + previousPoint.z * (previousPoint.x - sigma)
+            };
+        }
+        else
+        {
+            // Lorenz (defalt)
+            float sigma = 10.0;
+            float beta = 8.0 / 3.0;
+            float rho = 28.0;
+
+            delta = {
+                sigma * (previousPoint.y - previousPoint.x),
+                previousPoint.x * (rho - previousPoint.z) - previousPoint.y,
+                previousPoint.x * previousPoint.y - beta * previousPoint.z
+            };
+        }
         
-        float3 delta = {
-            sigma * (previousPoint.y - previousPoint.x),
-            previousPoint.x * (rho - previousPoint.z) - previousPoint.y,
-            previousPoint.x * previousPoint.y - beta * previousPoint.z
-        };
         
         thisPoint = previousPoint + delta / divisor;
     }
