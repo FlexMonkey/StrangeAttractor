@@ -10,11 +10,26 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    override func viewDidLoad() {
+    let strangeAttractorRenderer = StrangeAttractorRenderer(
+        frame: CGRect(x: 50, y: 50, width: 640, height: 640),
+        device: nil)
+    
+    override func viewDidLoad()
+    {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+        
+        view.addSubview(strangeAttractorRenderer)
+        
+        print("viewDidLoad")
     }
 
+    
+    override func viewDidAppear(animated: Bool)
+    {
+        super.viewDidAppear(animated)
+        
+        strangeAttractorRenderer.paused = false
+    }
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
