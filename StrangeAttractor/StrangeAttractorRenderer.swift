@@ -25,6 +25,14 @@ class StrangeAttractorRenderer: MTKView
     let bytesPerRow: UInt
     let blankBitmapRawData : [UInt8]
     
+    var angle: Float = 0
+    var pointIndex: UInt = 1
+    private var frameStartTime: CFAbsoluteTime!
+    private var frameNumber = 0
+    
+    private var width: CGFloat
+    let centerBuffer: MTLBuffer
+    
     lazy var commandQueue: MTLCommandQueue =
     {
         return self.device!.newCommandQueue()
@@ -69,11 +77,15 @@ class StrangeAttractorRenderer: MTKView
         return MTLSize(width: self.pointCount / threadExecutionWidth, height:1, depth:1)
     }()
     
-    override init(frame frameRect: CGRect, device: MTLDevice?)
+    required init(frame frameRect: CGRect, device: MTLDevice, width: CGFloat)
     {
-        bytesPerRow = 4 * 1280
-        region = MTLRegionMake2D(0, 0, Int(1280), Int(1280))
-        blankBitmapRawData = [UInt8](count: Int(1280 * 1280 * 4), repeatedValue: 0)
+        self.width = width
+ 
+        let pixelWidth = width * 2
+        
+        bytesPerRow = 4 * UInt(pixelWidth)
+        region = MTLRegionMake2D(0, 0, Int(pixelWidth), Int(pixelWidth))
+        blankBitmapRawData = [UInt8](count: Int(pixelWidth * pixelWidth * 4), repeatedValue: 0)
         
         pointMemoryByteSize = pointCount * sizeof(float3)
         
@@ -88,18 +100,19 @@ class StrangeAttractorRenderer: MTKView
             start: pointPtr,
             count: pointCount)
         
+        var center = UInt(pixelWidth / 2)
+        centerBuffer = device.newBufferWithBytes(
+            &center,
+            length: sizeof(UInt),
+            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        
         super.init(
             frame: frameRect,
-            device: device ?? MTLCreateSystemDefaultDevice())
+            device: device)
         
         paused = true
         framebufferOnly = false
-        
-        for index in pointBufferPtr.startIndex ..< pointBufferPtr.endIndex
-        {
-            pointBufferPtr[index] = float3(-1, -1, -1)
-        }
-        
+
         func rnd() -> Float
         {
             return -5 + 10 * (Float(arc4random_uniform(1000)) / 1000)
@@ -115,12 +128,6 @@ class StrangeAttractorRenderer: MTKView
         fatalError("init(coder:) has not been implemented")
     }
     
-    var angle: Float = 0
-    var pointIndex: Int = 1
-    private var frameStartTime: CFAbsoluteTime!
-    private var frameNumber = 0
-
-    
     override func drawRect(rect: CGRect)
     {
         frameNumber += 1
@@ -128,9 +135,7 @@ class StrangeAttractorRenderer: MTKView
         if frameNumber == 100
         {
             let frametime = (CFAbsoluteTimeGetCurrent() - frameStartTime) / 100
-            
             print(String(format: " at %.1f fps", 1 / frametime))
-            
             frameStartTime = CFAbsoluteTimeGetCurrent()
             frameNumber = 0
         }
@@ -149,8 +154,19 @@ class StrangeAttractorRenderer: MTKView
         commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
         commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 1)
         
-        let angleBuffer = device!.newBufferWithBytes(&angle, length: sizeof(Float), options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        let angleBuffer = device!.newBufferWithBytes(
+            &angle,
+            length: sizeof(Float),
+            options: MTLResourceOptions.CPUCacheModeDefaultCache)
         commandEncoder.setBuffer(angleBuffer, offset: 0, atIndex: 2)
+        
+        let pointIndexBuffer = device!.newBufferWithBytes(
+            &pointIndex,
+            length: sizeof(UInt),
+            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
+        
+        commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
         
         guard let drawable = currentDrawable else
         {
@@ -161,10 +177,11 @@ class StrangeAttractorRenderer: MTKView
             return
         }
         
-        drawable.texture.replaceRegion(self.region,
-                                       mipmapLevel: 0,
-                                       withBytes: blankBitmapRawData,
-                                       bytesPerRow: Int(bytesPerRow))
+        drawable.texture.replaceRegion(
+            self.region,
+            mipmapLevel: 0,
+            withBytes: blankBitmapRawData,
+            bytesPerRow: Int(bytesPerRow))
         
         commandEncoder.setTexture(drawable.texture, atIndex: 0)
         
@@ -177,6 +194,7 @@ class StrangeAttractorRenderer: MTKView
         drawable.present()
         
         angle += 0.01
+        pointIndex += 1
     }
     
     

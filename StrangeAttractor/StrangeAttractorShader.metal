@@ -9,20 +9,64 @@
 #include <metal_stdlib>
 using namespace metal;
 
+void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 end, float3 color);
+
+void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 end, float3 color)
+{
+    int x = int(start.x);
+    int y = int(start.y);
+    
+    int dx = abs(x - int(end.x));
+    int dy = abs(y - int(end.y));
+    
+    int sx = start.x < end.x ? 1 : -1;
+    int sy = start.y < end.y ? 1 : -1;
+    
+    int err = (dx > dy ? dx : -dy) / 2;
+    
+    while (true)
+    {
+        if (x > 0 && y > 0)
+        {
+            targetTexture.write(float4(color, 1.0), uint2(x, y));
+        }
+        
+        if (x == int(end.x) && y == int(end.y))
+        {
+            break;
+        }
+        
+        int e2 = err;
+        
+        if (e2 > -dx)
+        {
+            err -= dy;
+            x += sx;
+        }
+        
+        if (e2 < dy)
+        {
+            err += dx;
+            y += sy;
+        }
+    }
+}
 
 kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[texture(0)]],
                                    const device float3 *inPoints [[ buffer(0) ]],
                                    device float3 *outPoints [[ buffer(1) ]],
                                    constant float &angle [[ buffer(2) ]],
+                                   constant uint &pointIndex [[ buffer(3) ]],
+                                   constant uint &center [[ buffer(4) ]],
                                    uint id [[thread_position_in_grid]])
 {
-    const float3 previousPoint = inPoints[id - 1];
+    float scale = 20.0;
     float3 thisPoint = inPoints[id];
     
-    if(id != 0 &&
-       previousPoint.x != -1 && previousPoint.y != -1 && previousPoint.z != -1 &&
-       thisPoint.x == -1 && thisPoint.y == -1 && thisPoint.y == -1)
+    if(id == pointIndex)
     {
+        const float3 previousPoint = inPoints[id - 1];
+        
         float x = previousPoint.x;
         float y = previousPoint.y;
         float z = previousPoint.z;
@@ -40,14 +84,18 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
         thisPoint.y = previousPoint.y + stepy / divisor;
         thisPoint.z = previousPoint.z + stepz / divisor;
     }
-    else if (thisPoint.x == -1 && thisPoint.y == -1 && thisPoint.y == -1)
+    else if (id < 1 || id > pointIndex)
     {
         return;
     }
 
-    float xpos = (thisPoint.x * sin(angle) + thisPoint.z * cos(angle)) * 20.0;
+    float startX = (inPoints[id - 1].x * sin(angle) + inPoints[id - 1].z * cos(angle)) * scale;
+    uint2 startPoint = uint2(center + startX, center + inPoints[id - 1].y * scale);
     
-    outTexture.write(float4(1.0), uint2(640 + xpos, 640 + thisPoint.y * 20.0));
-
+    float endX = (thisPoint.x * sin(angle) + thisPoint.z * cos(angle)) * scale;
+    uint2 endPoint = uint2(center + endX, center + thisPoint.y * scale);
+    
+    drawLine(outTexture, startPoint, endPoint, float3(1.0));
+    
     outPoints[id] = thisPoint;
 }

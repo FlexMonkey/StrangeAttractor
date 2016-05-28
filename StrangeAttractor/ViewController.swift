@@ -10,17 +10,22 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    let strangeAttractorRenderer = StrangeAttractorRenderer(
-        frame: CGRect(x: 50, y: 50, width: 640, height: 640),
-        device: nil)
-    
+    var strangeAttractorRenderer: StrangeAttractorRenderer!
+
     override func viewDidLoad()
     {
         super.viewDidLoad()
         
-        view.addSubview(strangeAttractorRenderer)
+        view.backgroundColor = UIColor.blackColor()
         
-        print("viewDidLoad")
+        let side = min(view.frame.width, view.frame.height)
+        
+        strangeAttractorRenderer = StrangeAttractorRenderer(
+            frame: CGRect(x: 0, y: 0, width: side, height: side),
+            device: MTLCreateSystemDefaultDevice()!, 
+            width: side)
+        
+        view.addSubview(strangeAttractorRenderer)
     }
 
     
@@ -30,11 +35,21 @@ class ViewController: UIViewController {
         
         strangeAttractorRenderer.paused = false
     }
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+
+    override func prefersStatusBarHidden() -> Bool
+    {
+        return true
     }
 
-
+    override func viewDidLayoutSubviews()
+    {
+        let side = min(view.frame.width, view.frame.height)
+        
+        strangeAttractorRenderer.frame = CGRect(
+            x: (view.frame.width - side) / 2,
+            y: (view.frame.height - side) / 2,
+            width: side,
+            height: side)
+    }
 }
 
