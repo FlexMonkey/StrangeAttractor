@@ -63,26 +63,22 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
     float scale = 20.0;
     float3 thisPoint = inPoints[id];
     
-    if(id == pointIndex)
+    if (id == pointIndex)
     {
-        const float3 previousPoint = inPoints[id - 1];
-        
-        float x = previousPoint.x;
-        float y = previousPoint.y;
-        float z = previousPoint.z;
+        float3 previousPoint = inPoints[id - 1];
         
         float sigma = 10.0;
         float beta = 8.0 / 3.0;
         float rho = 28.0;
         float divisor = 300.0;
         
-        float deltaX = sigma * (y - x);
-        float deltaY = x * (rho - z) - y;
-        float deltaZ = x * y - beta * z;
+        float3 delta = {
+            sigma * (previousPoint.y - previousPoint.x),
+            previousPoint.x * (rho - previousPoint.z) - previousPoint.y,
+            previousPoint.x * previousPoint.y - beta * previousPoint.z
+        };
         
-        thisPoint.x = previousPoint.x + deltaX / divisor;
-        thisPoint.y = previousPoint.y + deltaY / divisor;
-        thisPoint.z = previousPoint.z + deltaZ / divisor;
+        thisPoint = previousPoint + delta / divisor;
     }
     else if (id < 1 || id > pointIndex)
     {
