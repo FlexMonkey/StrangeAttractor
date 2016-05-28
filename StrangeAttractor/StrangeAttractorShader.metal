@@ -76,13 +76,13 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
         float rho = 28.0;
         float divisor = 300.0;
         
-        float stepx = sigma * (y - x);
-        float stepy = x * (rho - z) - y;
-        float stepz = x * y - beta * z;
+        float deltaX = sigma * (y - x);
+        float deltaY = x * (rho - z) - y;
+        float deltaZ = x * y - beta * z;
         
-        thisPoint.x = previousPoint.x + stepx / divisor;
-        thisPoint.y = previousPoint.y + stepy / divisor;
-        thisPoint.z = previousPoint.z + stepz / divisor;
+        thisPoint.x = previousPoint.x + deltaX / divisor;
+        thisPoint.y = previousPoint.y + deltaY / divisor;
+        thisPoint.z = previousPoint.z + deltaZ / divisor;
     }
     else if (id < 1 || id > pointIndex)
     {
