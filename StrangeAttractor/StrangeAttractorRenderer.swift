@@ -12,29 +12,32 @@ import simd.vector
 
 class StrangeAttractorRenderer: MTKView
 {
-    var pointCount = 4_194_304
-    let alignment:Int = 0x4000
-    let pointMemoryByteSize:Int
+    private var pointCount = 4_194_304
+    private let alignment:Int = 0x4000
+    private let pointMemoryByteSize:Int
 
-    var pointMemory:UnsafeMutablePointer<Void> = nil
-    let pointVoidPtr: COpaquePointer
-    let pointPtr: UnsafeMutablePointer<float3>
-    let pointBufferPtr: UnsafeMutableBufferPointer<float3>
+    private var pointMemory:UnsafeMutablePointer<Void> = nil
+    private let pointVoidPtr: COpaquePointer
+    private let pointPtr: UnsafeMutablePointer<float3>
+    private let pointBufferPtr: UnsafeMutableBufferPointer<float3>
 
-    let region: MTLRegion
-    let bytesPerRow: UInt
-    let blankBitmapRawData : [UInt8]
+    private let region: MTLRegion
+    private let bytesPerRow: UInt
+    private let blankBitmapRawData : [UInt8]
     
-    var angle: Float = 0
-    var pointIndex: UInt = 1
+    private var angle: Float = 0
+    private var pointIndex: UInt = 1
     private var frameStartTime: CFAbsoluteTime!
     private var frameNumber = 0
     
     private var width: CGFloat
-    let centerBuffer: MTLBuffer
+    private let centerBuffer: MTLBuffer
     
-    var scale: Float = 20.0
-    var pinchScale: CGFloat = 0 // scale at pinch begin
+    private var scale: Float = 20.0
+    private var pinchScale: CGFloat = 0 // scale at pinch begin
+    
+    /// Number of solver iterations per frame
+    var iterations = 10
     
     let segmentedControl = UISegmentedControl(items: ["Lorenz", "Chen Lee", "Halvorsen", "Lü Chen", "Hadley", "Rössler"])
     
@@ -181,73 +184,81 @@ class StrangeAttractorRenderer: MTKView
         }
         
         let commandBuffer = commandQueue.commandBuffer()
-        let commandEncoder = commandBuffer.computeCommandEncoder()
-        
-        commandEncoder.setComputePipelineState(pipelineState)
-        
-        let pointBuffer = device!.newBufferWithBytesNoCopy(
-            pointMemory,
-            length: Int(pointMemoryByteSize),
-            options: .CPUCacheModeDefaultCache,
-            deallocator: nil)
-        
-        commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
-        commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 1)
         
         let angleBuffer = device!.newBufferWithBytes(
             &angle,
             length: sizeof(Float),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
-        commandEncoder.setBuffer(angleBuffer, offset: 0, atIndex: 2)
         
-        let pointIndexBuffer = device!.newBufferWithBytes(
-            &pointIndex,
-            length: sizeof(UInt),
-            options: MTLResourceOptions.CPUCacheModeDefaultCache)
-        commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
-        
-        commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
+
         
         let scaleBuffer = device!.newBufferWithBytes(
             &scale,
             length: sizeof(Float),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
-        commandEncoder.setBuffer(scaleBuffer, offset: 0, atIndex: 5)
         
         var attractorTypeIndex = UInt(segmentedControl.selectedSegmentIndex)
         let attractorTypeIndexBuffer = device!.newBufferWithBytes(
             &attractorTypeIndex,
             length: sizeof(UInt),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
-        commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, atIndex: 6)
         
-        guard let drawable = currentDrawable else
-        {
-            commandEncoder.endEncoding()
-            
-            print("metalLayer.nextDrawable() returned nil")
-            
-            return
-        }
-        
-        drawable.texture.replaceRegion(
+        currentDrawable?.texture.replaceRegion(
             self.region,
             mipmapLevel: 0,
             withBytes: blankBitmapRawData,
             bytesPerRow: Int(bytesPerRow))
         
-        commandEncoder.setTexture(drawable.texture, atIndex: 0)
-        
-        commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-        
-        commandEncoder.endEncoding()
+        for _ in 0 ... iterations
+        {
+            let commandEncoder = commandBuffer.computeCommandEncoder()
+            
+            commandEncoder.setComputePipelineState(pipelineState)
+            
+            let pointBuffer = device!.newBufferWithBytesNoCopy(
+                pointMemory,
+                length: Int(pointMemoryByteSize),
+                options: .CPUCacheModeDefaultCache,
+                deallocator: nil)
+            
+            let pointIndexBuffer = device!.newBufferWithBytes(
+                &pointIndex,
+                length: sizeof(UInt),
+                options: MTLResourceOptions.CPUCacheModeDefaultCache)
+            
+            commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
+            commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 1)
+            commandEncoder.setBuffer(angleBuffer, offset: 0, atIndex: 2)
+            commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
+            commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
+            commandEncoder.setBuffer(scaleBuffer, offset: 0, atIndex: 5)
+            commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, atIndex: 6)
+            
+            guard let drawable = currentDrawable else
+            {
+                commandEncoder.endEncoding()
+                
+                print("metalLayer.nextDrawable() returned nil")
+                
+                return
+            }
+
+            commandEncoder.setTexture(drawable.texture, atIndex: 0)
+            
+            commandEncoder.dispatchThreadgroups(
+                threadgroupsPerGrid,
+                threadsPerThreadgroup: threadsPerThreadgroup)
+            
+            commandEncoder.endEncoding()
+  
+            pointIndex += 1
+        }
         
         commandBuffer.commit()
         
-        drawable.present()
+        currentDrawable?.present()
         
         angle += 0.005
-        pointIndex += 1
     }
     
     func rnd() -> Float
