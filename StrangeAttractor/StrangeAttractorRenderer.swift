@@ -42,7 +42,7 @@ class StrangeAttractorRenderer: MTKView
     /// Number of solver iterations per frame
     var iterations = 20
     
-    let segmentedControl = UISegmentedControl(items: ["Lorenz", "Chen Lee", "Halvorsen", "Lü Chen", "Hadley", "Rössler"])
+    let segmentedControl = UISegmentedControl(items: ["Lorenz", "Chen Lee", "Halvorsen", "Lü Chen", "Hadley", "Rössler", "Lorenze Mod 2"])
     
     lazy var commandQueue: MTLCommandQueue =
     {
@@ -57,6 +57,24 @@ class StrangeAttractorRenderer: MTKView
     lazy var pipelineState: MTLComputePipelineState =
     {
         guard let kernelFunction = self.defaultLibrary.newFunctionWithName("strangeAttractorKernel") else
+        {
+            fatalError("Unable to create kernel function for strangeAttractorKernel")
+        }
+        
+        do
+        {
+            let pipelineState = try self.device!.newComputePipelineStateWithFunction(kernelFunction)
+            return pipelineState
+        }
+        catch
+        {
+            fatalError("Unable to create pipeline state for strangeAttractorKernel")
+        }
+    }()
+    
+    lazy var rendererPipelineState: MTLComputePipelineState =
+    {
+        guard let kernelFunction = self.defaultLibrary.newFunctionWithName("strangeAttractorRendererKernel") else
         {
             fatalError("Unable to create kernel function for strangeAttractorKernel")
         }
@@ -209,14 +227,14 @@ class StrangeAttractorRenderer: MTKView
             &attractorTypeIndex,
             length: sizeof(UInt),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
-        
 
-        
         currentDrawable?.texture.replaceRegion(
             self.region,
             mipmapLevel: 0,
             withBytes: blankBitmapRawData,
             bytesPerRow: Int(bytesPerRow))
+        
+        // calculate....
         
         for _ in 0 ... iterations
         {
@@ -237,22 +255,8 @@ class StrangeAttractorRenderer: MTKView
             
             commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
             commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 1)
-            commandEncoder.setBuffer(angleBuffer, offset: 0, atIndex: 2)
             commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
-            commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
-            commandEncoder.setBuffer(scaleBuffer, offset: 0, atIndex: 5)
             commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, atIndex: 6)
-            
-            guard let drawable = currentDrawable else
-            {
-                commandEncoder.endEncoding()
-                
-                print("metalLayer.nextDrawable() returned nil")
-                
-                return
-            }
-
-            commandEncoder.setTexture(drawable.texture, atIndex: 0)
             
             commandEncoder.dispatchThreadgroups(
                 threadgroupsPerGrid,
@@ -263,10 +267,52 @@ class StrangeAttractorRenderer: MTKView
             pointIndex += 1
         }
         
+        // render....
+        
+        let commandEncoder = commandBuffer.computeCommandEncoder()
+        
+        commandEncoder.setComputePipelineState(rendererPipelineState)
+        
+        let pointBuffer = device!.newBufferWithBytesNoCopy(
+            pointMemory,
+            length: Int(pointMemoryByteSize),
+            options: .CPUCacheModeDefaultCache,
+            deallocator: nil)
+        
+        let pointIndexBuffer = device!.newBufferWithBytes(
+            &pointIndex,
+            length: sizeof(UInt),
+            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        
+        commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
+        commandEncoder.setBuffer(angleBuffer, offset: 0, atIndex: 2)
+        commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
+        commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
+        commandEncoder.setBuffer(scaleBuffer, offset: 0, atIndex: 5)
+        
+        guard let drawable = currentDrawable else
+        {
+            commandEncoder.endEncoding()
+            
+            print("metalLayer.nextDrawable() returned nil")
+            
+            return
+        }
+        
+        commandEncoder.setTexture(drawable.texture, atIndex: 0)
+        
+        commandEncoder.dispatchThreadgroups(
+            threadgroupsPerGrid,
+            threadsPerThreadgroup: threadsPerThreadgroup)
+        
+        commandEncoder.endEncoding()
+        
+        // finish....
+        
         commandBuffer.commit()
         
         currentDrawable?.present()
-        
+
         angle += 0.005
     }
     

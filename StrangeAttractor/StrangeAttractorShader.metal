@@ -21,7 +21,7 @@ void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 
     
     int dx = abs(x - int(end.x));
     int dy = abs(y - int(end.y));
-    
+  
     int sx = start.x < end.x ? 1 : -1;
     int sy = start.y < end.y ? 1 : -1;
     
@@ -39,7 +39,7 @@ void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 
         
         iterations++;
         
-        if (iterations > 100 || (x == int(end.x) && y == int(end.y)))
+        if (iterations > 250 || (x == int(end.x) && y == int(end.y)))
         {
             break;
         }
@@ -60,13 +60,11 @@ void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 
     }
 }
 
-kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[texture(0)]],
-                                   const device float3 *inPoints [[ buffer(0) ]],
+kernel void strangeAttractorKernel(const device float3 *inPoints [[ buffer(0) ]],
                                    device float3 *outPoints [[ buffer(1) ]],
-                                   constant float &angle [[ buffer(2) ]],
+                                 
                                    constant uint &pointIndex [[ buffer(3) ]],
-                                   constant uint &center [[ buffer(4) ]],
-                                   constant float &scale [[ buffer(5) ]],
+                        
                                    constant uint &attractorTypeIndex [[ buffer(6) ]],
                                    uint id [[thread_position_in_grid]])
 {
@@ -138,6 +136,20 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
                 beta + previousPoint.z * (previousPoint.x - sigma)
             };
         }
+        else if (attractorTypeIndex == 6)
+        {
+            // Lorenze mod 2
+            float a = 0.9;
+            float b = 5;
+            float c = 9.9;
+            float d = 1;
+            delta = {
+                -a * previousPoint.x + previousPoint.y * previousPoint.y - previousPoint.z * previousPoint.z + a * c,
+                previousPoint.x * (previousPoint.y - b * previousPoint.z) + d,
+                -previousPoint.z + previousPoint.x * (b * previousPoint.y + previousPoint.z)
+            };
+            
+        }
         else
         {
             // Lorenz (defalt)
@@ -151,9 +163,25 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
                 previousPoint.x * previousPoint.y - beta * previousPoint.z
             };
         }
-        
-        
+
         thisPoint = previousPoint + delta / divisor;
+    }
+    outPoints[id] = thisPoint;
+}
+
+kernel void strangeAttractorRendererKernel(texture2d<float, access::write> outTexture [[texture(0)]],
+                                   const device float3 *inPoints [[ buffer(0) ]],
+                                   constant float &angle [[ buffer(2) ]],
+                                   constant uint &pointIndex [[ buffer(3) ]],
+                                   constant uint &center [[ buffer(4) ]],
+                                   constant float &scale [[ buffer(5) ]],
+                                   uint id [[thread_position_in_grid]])
+{
+    float3 thisPoint = inPoints[id];
+    
+    if (id < 1 || id > pointIndex - 1)
+    {
+        return;
     }
 
     float startX = (inPoints[id - 1].x * sin(angle) + inPoints[id - 1].z * cos(angle)) * scale;
@@ -163,6 +191,7 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
     uint2 endPoint = uint2(center + endX, center + thisPoint.y * scale);
     
     drawLine(outTexture, startPoint, endPoint, float3(1.0));
-    
-    outPoints[id] = thisPoint;
 }
+
+
+// ends
