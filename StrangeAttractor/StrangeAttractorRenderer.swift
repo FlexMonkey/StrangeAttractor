@@ -227,12 +227,12 @@ class StrangeAttractorRenderer: MTKView
             &attractorTypeIndex,
             length: sizeof(UInt),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
-
-        currentDrawable?.texture.replaceRegion(
-            self.region,
-            mipmapLevel: 0,
-            withBytes: blankBitmapRawData,
-            bytesPerRow: Int(bytesPerRow))
+        
+        let pointBuffer = device!.newBufferWithBytesNoCopy(
+            pointMemory,
+            length: Int(pointMemoryByteSize),
+            options: .CPUCacheModeDefaultCache,
+            deallocator: nil)
         
         // calculate....
         
@@ -241,12 +241,6 @@ class StrangeAttractorRenderer: MTKView
             let commandEncoder = commandBuffer.computeCommandEncoder()
             
             commandEncoder.setComputePipelineState(pipelineState)
-
-            let pointBuffer = device!.newBufferWithBytesNoCopy(
-                pointMemory,
-                length: Int(pointMemoryByteSize),
-                options: .CPUCacheModeDefaultCache,
-                deallocator: nil)
             
             let pointIndexBuffer = device!.newBufferWithBytes(
                 &pointIndex,
@@ -272,13 +266,7 @@ class StrangeAttractorRenderer: MTKView
         let commandEncoder = commandBuffer.computeCommandEncoder()
         
         commandEncoder.setComputePipelineState(rendererPipelineState)
-        
-        let pointBuffer = device!.newBufferWithBytesNoCopy(
-            pointMemory,
-            length: Int(pointMemoryByteSize),
-            options: .CPUCacheModeDefaultCache,
-            deallocator: nil)
-        
+
         let pointIndexBuffer = device!.newBufferWithBytes(
             &pointIndex,
             length: sizeof(UInt),
@@ -299,6 +287,12 @@ class StrangeAttractorRenderer: MTKView
             return
         }
         
+        drawable.texture.replaceRegion(
+            self.region,
+            mipmapLevel: 0,
+            withBytes: blankBitmapRawData,
+            bytesPerRow: Int(bytesPerRow))
+        
         commandEncoder.setTexture(drawable.texture, atIndex: 0)
         
         commandEncoder.dispatchThreadgroups(
@@ -310,15 +304,16 @@ class StrangeAttractorRenderer: MTKView
         // finish....
         
         commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
         
         currentDrawable?.present()
-
+        
         angle += 0.005
     }
     
     func rnd() -> Float
     {
-        return -5 + 10 * (Float(arc4random_uniform(1000)) / 1000)
+        return 1 + Float(drand48()) 
     }
     
 }
