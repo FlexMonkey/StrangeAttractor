@@ -24,7 +24,7 @@ class ViewController: UIViewController {
             frame: CGRect(x: 0, y: 0, width: side, height: side),
             device: MTLCreateSystemDefaultDevice()!, 
             width: side,
-            contentScaleFactor: 2)
+            contentScaleFactor: UIScreen.mainScreen().scale)
         
         view.addSubview(strangeAttractorRenderer)
     }
