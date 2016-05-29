@@ -12,7 +12,7 @@ import simd.vector
 
 class StrangeAttractorRenderer: MTKView
 {
-    private var pointCount = 1_048_576 // A million points at 60fps = 4.85 hours of running which is plenty :)
+    private var pointCount =  262144 // 262144 points at 60fps / 20 iterations per frame = 3.64 mins
     private let alignment:Int = 0x4000
     private let pointMemoryByteSize:Int
 
@@ -180,7 +180,7 @@ class StrangeAttractorRenderer: MTKView
         if frameNumber == 100
         {
             let frametime = (CFAbsoluteTimeGetCurrent() - frameStartTime) / 100
-            print(String(format: " at %.1f fps", 1 / frametime))
+            print(String(format: "%.1f fps", 1 / frametime), "| pointIndex: \(pointIndex)")
             frameStartTime = CFAbsoluteTimeGetCurrent()
             frameNumber = 0
         }
