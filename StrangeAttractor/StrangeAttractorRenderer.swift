@@ -12,7 +12,7 @@ import simd.vector
 
 class StrangeAttractorRenderer: MTKView
 {
-    private var pointCount = 4_194_304
+    private var pointCount = 1_048_576 // A million points at 60fps = 4.85 hours of running which is plenty :)
     private let alignment:Int = 0x4000
     private let pointMemoryByteSize:Int
 
@@ -36,15 +36,18 @@ class StrangeAttractorRenderer: MTKView
     private var scale: Float = 20.0
     private var pinchScale: CGFloat = 0 // scale at pinch begin
     
+    private var resetPointIndex = false // schedule pointIndex to reset to 1 on next frame
+    private var attractorTypeIndex: UInt = 0
+    
     /// Number of solver iterations per frame
-    var iterations = 10
+    var iterations = 20
     
     let segmentedControl = UISegmentedControl(items: ["Lorenz", "Chen Lee", "Halvorsen", "Lü Chen", "Hadley", "Rössler"])
     
     lazy var commandQueue: MTLCommandQueue =
     {
         return self.device!.newCommandQueue()
-        }()
+    }()
     
     lazy var defaultLibrary: MTLLibrary =
     {
@@ -135,7 +138,7 @@ class StrangeAttractorRenderer: MTKView
             self,
             action: #selector(segmentedControlChangeHandler),
             forControlEvents: .ValueChanged)
-        segmentedControl.selectedSegmentIndex = 0
+        segmentedControl.selectedSegmentIndex = Int(attractorTypeIndex)
     }
     
     override func layoutSubviews()
@@ -154,10 +157,9 @@ class StrangeAttractorRenderer: MTKView
     
     func segmentedControlChangeHandler()
     {
-        pointBufferPtr[pointBufferPtr.startIndex] = float3(rnd(), rnd(), rnd())
-        pointIndex = 1
+        resetPointIndex = true
     }
-    
+
     func pinchHandler(recogniser: UIPinchGestureRecognizer)
     {
         switch recogniser.state
@@ -183,25 +185,32 @@ class StrangeAttractorRenderer: MTKView
             frameNumber = 0
         }
         
+        if resetPointIndex
+        {
+            pointBufferPtr[pointBufferPtr.startIndex] = float3(rnd(), rnd(), rnd())
+            pointIndex = 1
+            attractorTypeIndex = UInt(segmentedControl.selectedSegmentIndex)
+            resetPointIndex = false
+        }
+        
         let commandBuffer = commandQueue.commandBuffer()
         
         let angleBuffer = device!.newBufferWithBytes(
             &angle,
             length: sizeof(Float),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
-        
 
-        
         let scaleBuffer = device!.newBufferWithBytes(
             &scale,
             length: sizeof(Float),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
         
-        var attractorTypeIndex = UInt(segmentedControl.selectedSegmentIndex)
         let attractorTypeIndexBuffer = device!.newBufferWithBytes(
             &attractorTypeIndex,
             length: sizeof(UInt),
             options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        
+
         
         currentDrawable?.texture.replaceRegion(
             self.region,
@@ -214,7 +223,7 @@ class StrangeAttractorRenderer: MTKView
             let commandEncoder = commandBuffer.computeCommandEncoder()
             
             commandEncoder.setComputePipelineState(pipelineState)
-            
+
             let pointBuffer = device!.newBufferWithBytesNoCopy(
                 pointMemory,
                 length: Int(pointMemoryByteSize),

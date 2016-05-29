@@ -14,6 +14,8 @@ void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 
 
 void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 end, float3 color)
 {
+    int iterations = 0;
+    
     int x = int(start.x);
     int y = int(start.y);
     
@@ -35,7 +37,9 @@ void drawLine(texture2d<float, access::write> targetTexture, uint2 start, uint2 
             targetTexture.write(float4(color, 1.0), uint2(x, y));
         }
         
-        if (x == int(end.x) && y == int(end.y))
+        iterations++;
+        
+        if (iterations > 100 || (x == int(end.x) && y == int(end.y)))
         {
             break;
         }
@@ -68,7 +72,11 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
 {
     float3 thisPoint = inPoints[id];
     
-    if (id == pointIndex)
+    if (id < 1 || id > pointIndex)
+    {
+        return;
+    }
+    else if (id == pointIndex)
     {
         float divisor = 300.0;
         float3 previousPoint = inPoints[id - 1];
@@ -146,10 +154,6 @@ kernel void strangeAttractorKernel(texture2d<float, access::write> outTexture [[
         
         
         thisPoint = previousPoint + delta / divisor;
-    }
-    else if (id < 1 || id > pointIndex)
-    {
-        return;
     }
 
     float startX = (inPoints[id - 1].x * sin(angle) + inPoints[id - 1].z * cos(angle)) * scale;
