@@ -184,13 +184,15 @@ kernel void strangeAttractorRendererKernel(texture2d<float, access::write> outTe
         return;
     }
 
+    float normalisedTime = float(id) / min(262144.0, float(pointIndex));
+    
     float startX = (inPoints[id - 1].x * sin(angle) + inPoints[id - 1].z * cos(angle)) * scale;
     uint2 startPoint = uint2(center + startX, center + inPoints[id - 1].y * scale);
     
     float endX = (thisPoint.x * sin(angle) + thisPoint.z * cos(angle)) * scale;
     uint2 endPoint = uint2(center + endX, center + thisPoint.y * scale);
     
-    drawLine(outTexture, startPoint, endPoint, float3(1.0));
+    drawLine(outTexture, startPoint, endPoint, float3(normalisedTime, 1.0, 1.0 - normalisedTime));
 }
 
 

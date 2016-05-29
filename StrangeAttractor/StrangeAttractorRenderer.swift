@@ -313,7 +313,7 @@ class StrangeAttractorRenderer: MTKView
     
     func rnd() -> Float
     {
-        return 1 + Float(drand48()) 
+        return 1 + Float(drand48())
     }
     
 }
