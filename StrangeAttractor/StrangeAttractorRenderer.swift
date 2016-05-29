@@ -30,6 +30,9 @@ class StrangeAttractorRenderer: MTKView
     private var frameStartTime: CFAbsoluteTime!
     private var frameNumber = 0
     
+    private var panStartAngle: Float = 0
+    private var panning: Bool = false
+    
     private var width: CGFloat
     private let centerBuffer: MTLBuffer
     
@@ -151,6 +154,9 @@ class StrangeAttractorRenderer: MTKView
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinchHandler))
         addGestureRecognizer(pinch)
         
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(panHandler))
+        addGestureRecognizer(pan)
+        
         addSubview(segmentedControl)
         segmentedControl.addTarget(
             self,
@@ -178,6 +184,20 @@ class StrangeAttractorRenderer: MTKView
         resetPointIndex = true
     }
 
+    func panHandler(recogniser: UIPanGestureRecognizer)
+    {
+        switch recogniser.state
+        {
+        case .Began:
+            panning = true
+            panStartAngle = angle
+        case .Changed:
+            angle = panStartAngle + Float(CGFloat(M_PI) * recogniser.translationInView(self).x / width)
+        default:
+            panning = false
+        }
+    }
+    
     func pinchHandler(recogniser: UIPinchGestureRecognizer)
     {
         switch recogniser.state
@@ -308,7 +328,9 @@ class StrangeAttractorRenderer: MTKView
         
         currentDrawable?.present()
         
-        angle += 0.005
+        if !panning {
+            angle += 0.005
+        }
     }
     
     func rnd() -> Float
