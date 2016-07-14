@@ -151,16 +151,16 @@ class StrangeAttractorRenderer: MTKView
         
         frameStartTime = CFAbsoluteTimeGetCurrent()
         
-        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinchHandler))
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(StrangeAttractorRenderer.pinchHandler(_:)))
         addGestureRecognizer(pinch)
         
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(panHandler))
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(StrangeAttractorRenderer.panHandler(_:)))
         addGestureRecognizer(pan)
         
         addSubview(segmentedControl)
         segmentedControl.addTarget(
             self,
-            action: #selector(segmentedControlChangeHandler),
+            action: #selector(StrangeAttractorRenderer.segmentedControlChangeHandler),
             forControlEvents: .ValueChanged)
         segmentedControl.selectedSegmentIndex = Int(attractorTypeIndex)
     }
