@@ -49,12 +49,12 @@ class StrangeAttractorRenderer: MTKView
     
     lazy var commandQueue: MTLCommandQueue =
     {
-        return self.device!.makeCommandQueue()
+        return self.device!.makeCommandQueue()!
     }()
     
     lazy var defaultLibrary: MTLLibrary =
     {
-        return self.device!.newDefaultLibrary()!
+        return self.device!.makeDefaultLibrary()!
     }()
     
     lazy var pipelineState: MTLComputePipelineState =
@@ -136,7 +136,7 @@ class StrangeAttractorRenderer: MTKView
         centerBuffer = device.makeBuffer(
             bytes: &center,
             length: MemoryLayout<UInt>.size,
-            options: MTLResourceOptions())
+            options: MTLResourceOptions())!
         
         super.init(
             frame: frameRect,
@@ -179,12 +179,12 @@ class StrangeAttractorRenderer: MTKView
         fatalError("init(coder:) has not been implemented")
     }
     
-    func segmentedControlChangeHandler()
+    @objc func segmentedControlChangeHandler()
     {
         resetPointIndex = true
     }
 
-    func panHandler(_ recogniser: UIPanGestureRecognizer)
+    @objc func panHandler(_ recogniser: UIPanGestureRecognizer)
     {
         switch recogniser.state
         {
@@ -198,7 +198,7 @@ class StrangeAttractorRenderer: MTKView
         }
     }
     
-    func pinchHandler(_ recogniser: UIPinchGestureRecognizer)
+    @objc func pinchHandler(_ recogniser: UIPinchGestureRecognizer)
     {
         switch recogniser.state
         {
@@ -258,49 +258,49 @@ class StrangeAttractorRenderer: MTKView
         
         for _ in 0 ... iterations
         {
-            let commandEncoder = commandBuffer.makeComputeCommandEncoder()
+            let commandEncoder = commandBuffer?.makeComputeCommandEncoder()
             
-            commandEncoder.setComputePipelineState(pipelineState)
+            commandEncoder?.setComputePipelineState(pipelineState)
             
             let pointIndexBuffer = device!.makeBuffer(
                 bytes: &pointIndex,
                 length: MemoryLayout<UInt>.size,
                 options: MTLResourceOptions())
             
-            commandEncoder.setBuffer(pointBuffer, offset: 0, at: 0)
-            commandEncoder.setBuffer(pointBuffer, offset: 0, at: 1)
-            commandEncoder.setBuffer(pointIndexBuffer, offset: 0, at: 3)
-            commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, at: 6)
+            commandEncoder?.setBuffer(pointBuffer, offset: 0, index: 0)
+            commandEncoder?.setBuffer(pointBuffer, offset: 0, index: 1)
+            commandEncoder?.setBuffer(pointIndexBuffer, offset: 0, index: 3)
+            commandEncoder?.setBuffer(attractorTypeIndexBuffer, offset: 0, index: 6)
             
-            commandEncoder.dispatchThreadgroups(
+            commandEncoder?.dispatchThreadgroups(
                 threadgroupsPerGrid,
                 threadsPerThreadgroup: threadsPerThreadgroup)
             
-            commandEncoder.endEncoding()
+            commandEncoder?.endEncoding()
   
             pointIndex += 1
         }
         
         // render....
         
-        let commandEncoder = commandBuffer.makeComputeCommandEncoder()
+        let commandEncoder = commandBuffer?.makeComputeCommandEncoder()
         
-        commandEncoder.setComputePipelineState(rendererPipelineState)
+        commandEncoder?.setComputePipelineState(rendererPipelineState)
 
         let pointIndexBuffer = device!.makeBuffer(
             bytes: &pointIndex,
             length: MemoryLayout<UInt>.size,
             options: MTLResourceOptions())
         
-        commandEncoder.setBuffer(pointBuffer, offset: 0, at: 0)
-        commandEncoder.setBuffer(angleBuffer, offset: 0, at: 2)
-        commandEncoder.setBuffer(pointIndexBuffer, offset: 0, at: 3)
-        commandEncoder.setBuffer(centerBuffer, offset: 0, at: 4)
-        commandEncoder.setBuffer(scaleBuffer, offset: 0, at: 5)
+        commandEncoder?.setBuffer(pointBuffer, offset: 0, index: 0)
+        commandEncoder?.setBuffer(angleBuffer, offset: 0, index: 2)
+        commandEncoder?.setBuffer(pointIndexBuffer, offset: 0, index: 3)
+        commandEncoder?.setBuffer(centerBuffer, offset: 0, index: 4)
+        commandEncoder?.setBuffer(scaleBuffer, offset: 0, index: 5)
         
         guard let drawable = currentDrawable else
         {
-            commandEncoder.endEncoding()
+            commandEncoder?.endEncoding()
             
             print("metalLayer.nextDrawable() returned nil")
             
@@ -313,18 +313,18 @@ class StrangeAttractorRenderer: MTKView
             withBytes: blankBitmapRawData,
             bytesPerRow: Int(bytesPerRow))
         
-        commandEncoder.setTexture(drawable.texture, at: 0)
+        commandEncoder?.setTexture(drawable.texture, index: 0)
         
-        commandEncoder.dispatchThreadgroups(
+        commandEncoder?.dispatchThreadgroups(
             threadgroupsPerGrid,
             threadsPerThreadgroup: threadsPerThreadgroup)
         
-        commandEncoder.endEncoding()
+        commandEncoder?.endEncoding()
         
         // finish....
         
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        commandBuffer?.commit()
+        commandBuffer?.waitUntilCompleted()
         
         currentDrawable?.present()
         
