@@ -12,35 +12,35 @@ import simd.vector
 
 class StrangeAttractorRenderer: MTKView
 {
-    private var pointCount =  262144 // 262144 points at 60fps / 20 iterations per frame = 3.64 mins
-    private let alignment:Int = 0x4000
-    private let pointMemoryByteSize:Int
+    fileprivate var pointCount =  262144 // 262144 points at 60fps / 20 iterations per frame = 3.64 mins
+    fileprivate let alignment:Int = 0x4000
+    fileprivate let pointMemoryByteSize:Int
 
-    private var pointMemory:UnsafeMutablePointer<Void> = nil
-    private let pointVoidPtr: COpaquePointer
-    private let pointPtr: UnsafeMutablePointer<float3>
-    private let pointBufferPtr: UnsafeMutableBufferPointer<float3>
+    fileprivate var pointMemory:UnsafeMutableRawPointer? = nil
+    fileprivate let pointVoidPtr: OpaquePointer
+    fileprivate let pointPtr: UnsafeMutablePointer<float3>
+    fileprivate let pointBufferPtr: UnsafeMutableBufferPointer<float3>
 
-    private let region: MTLRegion
-    private let bytesPerRow: UInt
-    private let blankBitmapRawData : [UInt8]
+    fileprivate let region: MTLRegion
+    fileprivate let bytesPerRow: UInt
+    fileprivate let blankBitmapRawData : [UInt8]
     
-    private var angle: Float = 0
-    private var pointIndex: UInt = 1
-    private var frameStartTime: CFAbsoluteTime!
-    private var frameNumber = 0
+    fileprivate var angle: Float = 0
+    fileprivate var pointIndex: UInt = 1
+    fileprivate var frameStartTime: CFAbsoluteTime!
+    fileprivate var frameNumber = 0
     
-    private var panStartAngle: Float = 0
-    private var panning: Bool = false
+    fileprivate var panStartAngle: Float = 0
+    fileprivate var panning: Bool = false
     
-    private var width: CGFloat
-    private let centerBuffer: MTLBuffer
+    fileprivate var width: CGFloat
+    fileprivate let centerBuffer: MTLBuffer
     
-    private var scale: Float = 20.0
-    private var pinchScale: CGFloat = 0 // scale at pinch begin
+    fileprivate var scale: Float = 20.0
+    fileprivate var pinchScale: CGFloat = 0 // scale at pinch begin
     
-    private var resetPointIndex = false // schedule pointIndex to reset to 1 on next frame
-    private var attractorTypeIndex: UInt = 0
+    fileprivate var resetPointIndex = false // schedule pointIndex to reset to 1 on next frame
+    fileprivate var attractorTypeIndex: UInt = 0
     
     /// Number of solver iterations per frame
     var iterations = 20
@@ -49,7 +49,7 @@ class StrangeAttractorRenderer: MTKView
     
     lazy var commandQueue: MTLCommandQueue =
     {
-        return self.device!.newCommandQueue()
+        return self.device!.makeCommandQueue()
     }()
     
     lazy var defaultLibrary: MTLLibrary =
@@ -59,14 +59,14 @@ class StrangeAttractorRenderer: MTKView
     
     lazy var pipelineState: MTLComputePipelineState =
     {
-        guard let kernelFunction = self.defaultLibrary.newFunctionWithName("strangeAttractorKernel") else
+        guard let kernelFunction = self.defaultLibrary.makeFunction(name: "strangeAttractorKernel") else
         {
             fatalError("Unable to create kernel function for strangeAttractorKernel")
         }
         
         do
         {
-            let pipelineState = try self.device!.newComputePipelineStateWithFunction(kernelFunction)
+            let pipelineState = try self.device!.makeComputePipelineState(function: kernelFunction)
             return pipelineState
         }
         catch
@@ -77,14 +77,14 @@ class StrangeAttractorRenderer: MTKView
     
     lazy var rendererPipelineState: MTLComputePipelineState =
     {
-        guard let kernelFunction = self.defaultLibrary.newFunctionWithName("strangeAttractorRendererKernel") else
+        guard let kernelFunction = self.defaultLibrary.makeFunction(name: "strangeAttractorRendererKernel") else
         {
             fatalError("Unable to create kernel function for strangeAttractorKernel")
         }
         
         do
         {
-            let pipelineState = try self.device!.newComputePipelineStateWithFunction(kernelFunction)
+            let pipelineState = try self.device!.makeComputePipelineState(function: kernelFunction)
             return pipelineState
         }
         catch
@@ -117,26 +117,26 @@ class StrangeAttractorRenderer: MTKView
         
         bytesPerRow = 4 * UInt(pixelWidth)
         region = MTLRegionMake2D(0, 0, Int(pixelWidth), Int(pixelWidth))
-        blankBitmapRawData = [UInt8](count: Int(pixelWidth * pixelWidth * 4), repeatedValue: 0)
+        blankBitmapRawData = [UInt8](repeating: 0, count: Int(pixelWidth * pixelWidth * 4))
         
-        pointMemoryByteSize = pointCount * sizeof(float3)
+        pointMemoryByteSize = pointCount * MemoryLayout<float3>.size
         
         posix_memalign(
             &pointMemory,
             alignment,
             pointMemoryByteSize)
         
-        pointVoidPtr = COpaquePointer(pointMemory)
+        pointVoidPtr = OpaquePointer(pointMemory!)
         pointPtr = UnsafeMutablePointer<float3>(pointVoidPtr)
         pointBufferPtr = UnsafeMutableBufferPointer(
             start: pointPtr,
             count: pointCount)
         
         var center = UInt(pixelWidth / 2)
-        centerBuffer = device.newBufferWithBytes(
-            &center,
-            length: sizeof(UInt),
-            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        centerBuffer = device.makeBuffer(
+            bytes: &center,
+            length: MemoryLayout<UInt>.size,
+            options: MTLResourceOptions())
         
         super.init(
             frame: frameRect,
@@ -144,7 +144,7 @@ class StrangeAttractorRenderer: MTKView
         
         self.contentScaleFactor = contentScaleFactor
         
-        paused = true
+        isPaused = true
         framebufferOnly = false
 
         pointBufferPtr[pointBufferPtr.startIndex] = float3(rnd(), rnd(), rnd())
@@ -161,7 +161,7 @@ class StrangeAttractorRenderer: MTKView
         segmentedControl.addTarget(
             self,
             action: #selector(StrangeAttractorRenderer.segmentedControlChangeHandler),
-            forControlEvents: .ValueChanged)
+            for: .valueChanged)
         segmentedControl.selectedSegmentIndex = Int(attractorTypeIndex)
     }
     
@@ -170,8 +170,8 @@ class StrangeAttractorRenderer: MTKView
         super.layoutSubviews()
         
         segmentedControl.frame = CGRect(
-            origin: CGPointZero,
-            size: CGSize(width: frame.width, height: segmentedControl.intrinsicContentSize().height))
+            origin: CGPoint.zero,
+            size: CGSize(width: frame.width, height: segmentedControl.intrinsicContentSize.height))
     }
     
     required init(coder: NSCoder)
@@ -184,34 +184,34 @@ class StrangeAttractorRenderer: MTKView
         resetPointIndex = true
     }
 
-    func panHandler(recogniser: UIPanGestureRecognizer)
+    func panHandler(_ recogniser: UIPanGestureRecognizer)
     {
         switch recogniser.state
         {
-        case .Began:
+        case .began:
             panning = true
             panStartAngle = angle
-        case .Changed:
-            angle = panStartAngle + Float(CGFloat(M_PI) * recogniser.translationInView(self).x / width)
+        case .changed:
+            angle = panStartAngle + Float(CGFloat(M_PI) * recogniser.translation(in: self).x / width)
         default:
             panning = false
         }
     }
     
-    func pinchHandler(recogniser: UIPinchGestureRecognizer)
+    func pinchHandler(_ recogniser: UIPinchGestureRecognizer)
     {
         switch recogniser.state
         {
-        case .Began:
+        case .began:
             pinchScale = CGFloat(scale)
-        case .Changed:
+        case .changed:
             scale = min(max(Float(pinchScale * recogniser.scale), 10.0), 400)
         default:
             pinchScale = 0
         }
     }
     
-    override func drawRect(rect: CGRect)
+    override func draw(_ rect: CGRect)
     {
         frameNumber += 1
         
@@ -231,46 +231,46 @@ class StrangeAttractorRenderer: MTKView
             resetPointIndex = false
         }
         
-        let commandBuffer = commandQueue.commandBuffer()
+        let commandBuffer = commandQueue.makeCommandBuffer()
         
-        let angleBuffer = device!.newBufferWithBytes(
-            &angle,
-            length: sizeof(Float),
-            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        let angleBuffer = device!.makeBuffer(
+            bytes: &angle,
+            length: MemoryLayout<Float>.size,
+            options: MTLResourceOptions())
 
-        let scaleBuffer = device!.newBufferWithBytes(
-            &scale,
-            length: sizeof(Float),
-            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        let scaleBuffer = device!.makeBuffer(
+            bytes: &scale,
+            length: MemoryLayout<Float>.size,
+            options: MTLResourceOptions())
         
-        let attractorTypeIndexBuffer = device!.newBufferWithBytes(
-            &attractorTypeIndex,
-            length: sizeof(UInt),
-            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        let attractorTypeIndexBuffer = device!.makeBuffer(
+            bytes: &attractorTypeIndex,
+            length: MemoryLayout<UInt>.size,
+            options: MTLResourceOptions())
         
-        let pointBuffer = device!.newBufferWithBytesNoCopy(
-            pointMemory,
+        let pointBuffer = device!.makeBuffer(
+            bytesNoCopy: pointMemory!,
             length: Int(pointMemoryByteSize),
-            options: .CPUCacheModeDefaultCache,
+            options: MTLResourceOptions(),
             deallocator: nil)
         
         // calculate....
         
         for _ in 0 ... iterations
         {
-            let commandEncoder = commandBuffer.computeCommandEncoder()
+            let commandEncoder = commandBuffer.makeComputeCommandEncoder()
             
             commandEncoder.setComputePipelineState(pipelineState)
             
-            let pointIndexBuffer = device!.newBufferWithBytes(
-                &pointIndex,
-                length: sizeof(UInt),
-                options: MTLResourceOptions.CPUCacheModeDefaultCache)
+            let pointIndexBuffer = device!.makeBuffer(
+                bytes: &pointIndex,
+                length: MemoryLayout<UInt>.size,
+                options: MTLResourceOptions())
             
-            commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
-            commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 1)
-            commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
-            commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, atIndex: 6)
+            commandEncoder.setBuffer(pointBuffer, offset: 0, at: 0)
+            commandEncoder.setBuffer(pointBuffer, offset: 0, at: 1)
+            commandEncoder.setBuffer(pointIndexBuffer, offset: 0, at: 3)
+            commandEncoder.setBuffer(attractorTypeIndexBuffer, offset: 0, at: 6)
             
             commandEncoder.dispatchThreadgroups(
                 threadgroupsPerGrid,
@@ -283,20 +283,20 @@ class StrangeAttractorRenderer: MTKView
         
         // render....
         
-        let commandEncoder = commandBuffer.computeCommandEncoder()
+        let commandEncoder = commandBuffer.makeComputeCommandEncoder()
         
         commandEncoder.setComputePipelineState(rendererPipelineState)
 
-        let pointIndexBuffer = device!.newBufferWithBytes(
-            &pointIndex,
-            length: sizeof(UInt),
-            options: MTLResourceOptions.CPUCacheModeDefaultCache)
+        let pointIndexBuffer = device!.makeBuffer(
+            bytes: &pointIndex,
+            length: MemoryLayout<UInt>.size,
+            options: MTLResourceOptions())
         
-        commandEncoder.setBuffer(pointBuffer, offset: 0, atIndex: 0)
-        commandEncoder.setBuffer(angleBuffer, offset: 0, atIndex: 2)
-        commandEncoder.setBuffer(pointIndexBuffer, offset: 0, atIndex: 3)
-        commandEncoder.setBuffer(centerBuffer, offset: 0, atIndex: 4)
-        commandEncoder.setBuffer(scaleBuffer, offset: 0, atIndex: 5)
+        commandEncoder.setBuffer(pointBuffer, offset: 0, at: 0)
+        commandEncoder.setBuffer(angleBuffer, offset: 0, at: 2)
+        commandEncoder.setBuffer(pointIndexBuffer, offset: 0, at: 3)
+        commandEncoder.setBuffer(centerBuffer, offset: 0, at: 4)
+        commandEncoder.setBuffer(scaleBuffer, offset: 0, at: 5)
         
         guard let drawable = currentDrawable else
         {
@@ -307,13 +307,13 @@ class StrangeAttractorRenderer: MTKView
             return
         }
         
-        drawable.texture.replaceRegion(
-            self.region,
+        drawable.texture.replace(
+            region: self.region,
             mipmapLevel: 0,
             withBytes: blankBitmapRawData,
             bytesPerRow: Int(bytesPerRow))
         
-        commandEncoder.setTexture(drawable.texture, atIndex: 0)
+        commandEncoder.setTexture(drawable.texture, at: 0)
         
         commandEncoder.dispatchThreadgroups(
             threadgroupsPerGrid,
