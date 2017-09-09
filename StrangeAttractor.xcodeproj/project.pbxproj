@@ -105,6 +105,8 @@
 				TargetAttributes = {
 					3EFDBE0E1CF87C65008E6BEA = {
 						CreatedOnToolsVersion = 7.3.1;
+						DevelopmentTeam = JL8K7LH7KS;
+						LastSwiftMigration = 0900;
 					};
 				};
 			};
@@ -263,11 +265,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = JL8K7LH7KS;
 				INFOPLIST_FILE = StrangeAttractor/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MTL_FAST_MATH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = uk.co.flexmonkey.StrangeAttractor;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vegather.GraphView-iOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -276,11 +281,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = JL8K7LH7KS;
 				INFOPLIST_FILE = StrangeAttractor/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MTL_FAST_MATH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = uk.co.flexmonkey.StrangeAttractor;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vegather.GraphView-iOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -304,6 +312,7 @@
 				3EFDBE231CF87C65008E6BEA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
